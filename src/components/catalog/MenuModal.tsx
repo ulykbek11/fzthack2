@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   X,
   Plus,
@@ -14,6 +14,12 @@ import {
   Phone,
 } from "lucide-react";
 import { Venue, MenuItem } from "@/data/mockVenues";
+import {
+  BUSINESS_ORDER_EVENT,
+  BusinessOrderStatus,
+  createBusinessOrder,
+  getBusinessOrder,
+} from "@/lib/businessStore";
 
 interface MenuModalProps {
   venue: Venue | null;
@@ -32,6 +38,23 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
   const [phoneError, setPhoneError] = useState("");
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [pickupCode, setPickupCode] = useState<number | null>(null);
+  const [businessOrderId, setBusinessOrderId] = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<BusinessOrderStatus>("NEW");
+
+  useEffect(() => {
+    if (!businessOrderId) return;
+    const refreshStatus = () => {
+      const order = getBusinessOrder(businessOrderId);
+      if (order) setLiveStatus(order.status);
+    };
+    refreshStatus();
+    window.addEventListener(BUSINESS_ORDER_EVENT, refreshStatus);
+    window.addEventListener("storage", refreshStatus);
+    return () => {
+      window.removeEventListener(BUSINESS_ORDER_EVENT, refreshStatus);
+      window.removeEventListener("storage", refreshStatus);
+    };
+  }, [businessOrderId]);
 
   if (!venue) return null;
 
@@ -108,6 +131,24 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
     setPhoneError("");
     const code = Math.floor(100 + Math.random() * 900);
     setPickupCode(code);
+    const order = createBusinessOrder({
+      venueId: venue.id,
+      venueName: venue.name,
+      pickupCode: String(code),
+      pickupTime,
+      customerPhone: phoneNumber,
+      items: cart.map((cartItem) => ({
+        id: cartItem.item.id,
+        name: cartItem.item.name,
+        price: cartItem.item.price,
+        quantity: cartItem.quantity,
+      })),
+      totalAmount,
+      bonusAmount: earnedBonuses,
+      isBonusOrder: eligibleForBonus,
+    });
+    setBusinessOrderId(order.id);
+    setLiveStatus(order.status);
     setOrderConfirmed(true);
   };
 
@@ -175,7 +216,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {venue.menu.map((dish) => {
+              {venue.menu.filter((dish) => dish.available !== false).map((dish) => {
                 const qty = getQuantity(dish.id);
                 return (
                   <div
@@ -249,7 +290,11 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                     Предзаказ принят!
                   </h3>
                   <p className="text-xs text-slate-600 dark:text-gray-300 mt-1">
-                    Заведение «{venue.name}» уже готовит ваш заказ
+                    {liveStatus === "NEW" && `Заказ отправлен в «${venue.name}»`}
+                    {liveStatus === "PREPARING" && "Заведение готовит ваш заказ"}
+                    {liveStatus === "READY" && "Заказ готов — можно забирать"}
+                    {liveStatus === "PICKED_UP" && "Заказ выдан. Приятного аппетита!"}
+                    {liveStatus === "CANCELLED" && "Заказ отменён заведением"}
                   </p>
                 </div>
 
@@ -263,6 +308,13 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                   <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-2">
                     Время самовывоза: <strong className="text-slate-900 dark:text-white">{pickupTime}</strong>
                   </p>
+                  <div className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
+                    {liveStatus === "NEW" && "Ожидает принятия"}
+                    {liveStatus === "PREPARING" && "Готовится"}
+                    {liveStatus === "READY" && "Готово к выдаче"}
+                    {liveStatus === "PICKED_UP" && "Выдано"}
+                    {liveStatus === "CANCELLED" && "Отменено"}
+                  </div>
                 </div>
 
                 {eligibleForBonus && <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-left max-w-xs mx-auto space-y-1.5">
@@ -288,6 +340,8 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                     setCart([]);
                     setPhoneNumber("");
                     setPhoneError("");
+                    setBusinessOrderId(null);
+                    setLiveStatus("NEW");
                     onClose();
                   }}
                   className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-bold transition-all"

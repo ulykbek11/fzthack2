@@ -89,6 +89,23 @@ select {
   scrollbar-width: none;
 }
 
+.business-input {
+  width: 100%;
+  border: 1px solid #dedede;
+  border-radius: 0.85rem;
+  background: #fff;
+  padding: 0.8rem 1rem;
+  color: #202124;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.business-input:focus {
+  border-color: #00a082;
+  box-shadow: 0 0 0 4px rgba(0, 160, 130, 0.1);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

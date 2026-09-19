@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   Clock3,
@@ -13,35 +13,45 @@ import {
   MapPin,
   Search,
   ShoppingBag,
-  SlidersHorizontal,
   Sparkles,
-  Store,
   UserRound,
   X,
 } from "lucide-react";
 import { catalogCategories, mockVenuesData, Venue } from "@/data/mockVenues";
 import VenueCard from "@/components/catalog/VenueCard";
 import MenuModal from "@/components/catalog/MenuModal";
+import { BUSINESS_DATA_EVENT, getRegisteredVenues } from "@/lib/businessStore";
 
 const RealAlmatyMap = dynamic(() => import("@/components/catalog/RealAlmatyMap"), {
   ssr: false,
   loading: () => <div className="h-[68vh] animate-pulse rounded-3xl bg-[#f2f2f2]" />,
 });
 
-type SortMode = "popular" | "rating" | "fast";
-
 export default function CatalogPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [bonusesOnly, setBonusesOnly] = useState(false);
   const [fastOnly, setFastOnly] = useState(false);
-  const [sortMode, setSortMode] = useState<SortMode>("popular");
   const [mapOpen, setMapOpen] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [registeredVenues, setRegisteredVenues] = useState<Venue[]>([]);
+
+  useEffect(() => {
+    const refreshVenues = () => setRegisteredVenues(getRegisteredVenues());
+    refreshVenues();
+    window.addEventListener(BUSINESS_DATA_EVENT, refreshVenues);
+    window.addEventListener("storage", refreshVenues);
+    return () => {
+      window.removeEventListener(BUSINESS_DATA_EVENT, refreshVenues);
+      window.removeEventListener("storage", refreshVenues);
+    };
+  }, []);
+
+  const allVenues = useMemo(() => [...registeredVenues, ...mockVenuesData], [registeredVenues]);
 
   const venues = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    const result = mockVenuesData.filter((venue) => {
+    const result = allVenues.filter((venue) => {
       const matchesQuery = !normalizedQuery ||
         venue.name.toLowerCase().includes(normalizedQuery) ||
         venue.address.toLowerCase().includes(normalizedQuery) ||
@@ -52,12 +62,8 @@ export default function CatalogPage() {
       return matchesQuery && matchesCategory && matchesBonus && matchesFast;
     });
 
-    return [...result].sort((a, b) => {
-      if (sortMode === "rating") return b.ratingScore - a.ratingScore;
-      if (sortMode === "fast") return Number.parseInt(a.prepTime, 10) - Number.parseInt(b.prepTime, 10);
-      return Number.parseFloat(b.reviewsCount) - Number.parseFloat(a.reviewsCount);
-    });
-  }, [query, category, bonusesOnly, fastOnly, sortMode]);
+    return result;
+  }, [allVenues, query, category, bonusesOnly, fastOnly]);
 
   return (
     <div className="min-h-screen bg-white pb-20 text-[#202124] md:pb-0">
@@ -103,7 +109,7 @@ export default function CatalogPage() {
               onClick={() => setBonusesOnly((value) => !value)}
               className={`filter-chip ${bonusesOnly ? "filter-chip-active" : ""}`}
             >
-              <Sparkles className="h-4 w-4" /> Бонусные часы
+              <Sparkles className="h-4 w-4" /> Бонусы
             </button>
             <button onClick={() => setFastOnly((value) => !value)} className={`filter-chip ${fastOnly ? "filter-chip-active" : ""}`}>
               <Clock3 className="h-4 w-4" /> До 15 минут
@@ -119,14 +125,6 @@ export default function CatalogPage() {
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2" />
             </div>
-            <div className="relative">
-              <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)} className="filter-chip appearance-none pr-9 outline-none" aria-label="Сортировка">
-                <option value="popular">Сначала популярные</option>
-                <option value="rating">По рейтингу</option>
-                <option value="fast">Быстрее готовятся</option>
-              </select>
-              <SlidersHorizontal className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-            </div>
             <button onClick={() => setMapOpen((value) => !value)} className={`filter-chip ml-auto ${mapOpen ? "filter-chip-active" : ""}`}>
               <Map className="h-4 w-4" /> {mapOpen ? "Список" : "Карта"}
             </button>
@@ -135,17 +133,6 @@ export default function CatalogPage() {
       </header>
 
       <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
-        <section className="mb-8 overflow-hidden rounded-[26px] bg-[#eaf8f5] px-5 py-5 sm:flex sm:items-center sm:justify-between sm:px-8 sm:py-6">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#008d74]">Умный предзаказ</p>
-            <h1 className="mt-1 text-2xl font-black tracking-[-0.035em] text-[#173f35] sm:text-3xl">Закажите к нужному времени</h1>
-            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#4b665f]">В спокойные часы заведения начисляют бонусы за предзаказ — такие предложения отмечены розовым бейджем.</p>
-          </div>
-          <div className="mt-4 flex items-center gap-2 rounded-2xl bg-white/75 px-4 py-3 text-sm font-bold text-[#173f35] sm:mt-0">
-            <Store className="h-5 w-5 text-[#00a082]" /> 50 заведений Алматы
-          </div>
-        </section>
-
         {mapOpen ? (
           <RealAlmatyMap venues={venues} selectedVenue={selectedVenue} onSelectVenue={setSelectedVenue} />
         ) : (
@@ -153,7 +140,7 @@ export default function CatalogPage() {
             <div className="mb-5 flex items-end justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-black tracking-[-0.035em] sm:text-[30px]">Рядом с вами</h2>
-                <p className="mt-1 text-sm text-[#737373]">{venues.length} заведений · данные организаций из 2ГИС</p>
+                <p className="mt-1 text-sm text-[#737373]">{venues.length} заведений · партнёры QoS и данные 2ГИС</p>
               </div>
               <ListFilter className="hidden h-5 w-5 text-[#666] sm:block" />
             </div>

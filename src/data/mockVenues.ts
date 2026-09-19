@@ -7,6 +7,7 @@ export interface MenuItem {
   image: string;
   category: string;
   popular?: boolean;
+  available?: boolean;
 }
 
 export interface Venue {
@@ -163,4 +164,6 @@ export const catalogCategories = [
   { slug: "burgers", name: "Бургеры и гриль", iconKey: "burgers" },
   { slug: "pizza", name: "Пицца", iconKey: "pizza" },
   { slug: "asian", name: "Азиатская", iconKey: "asian" },
+  { slug: "doner", name: "Донер и fast food", iconKey: "doner" },
+  { slug: "desserts", name: "Десерты", iconKey: "coffee" },
 ];
