@@ -14,7 +14,6 @@ import {
   Send,
   Building2,
 } from "lucide-react";
-import ThemeToggle from "@/components/ThemeToggle";
 
 export default function BusinessPage() {
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -55,7 +54,6 @@ export default function BusinessPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <Link
             href="/map"
             className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-200 transition-colors"

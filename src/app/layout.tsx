@@ -19,13 +19,13 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#090B11",
+  themeColor: "#ffffff",
 };
 
 export const metadata: Metadata = {
-  title: "QoS — Закажи заранее. Забери без очереди. Получи бонусы.",
+  title: "QoS — предзаказ еды в Алматы",
   description:
-    "Платформа предзаказа еды для кафе, ресторанов и fast food. Покупайте по цене самого заведения без наценок и получайте бонусы за каждый предзаказ.",
+    "Выбирайте заведение, оформляйте предзаказ и получайте бонусы за заказы в незагруженные часы.",
   keywords: [
     "QoS",
     "предзаказ еды",
@@ -39,19 +39,17 @@ export const metadata: Metadata = {
   authors: [{ name: "QoS Team" }],
 };
 
-import { ThemeProvider } from "@/context/ThemeContext";
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className="scroll-smooth dark" suppressHydrationWarning>
+    <html lang="ru" className="scroll-smooth">
       <body
-        className={`${inter.variable} ${outfit.variable} antialiased bg-[#f8fafc] text-slate-900 dark:bg-[#090B11] dark:text-gray-100 min-h-screen selection:bg-orange-500 selection:text-white transition-colors duration-300`}
+        className={`${inter.variable} ${outfit.variable} min-h-screen bg-white text-[#202124] antialiased selection:bg-[#ffc244] selection:text-[#173f35]`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        {children}
       </body>
     </html>
   );

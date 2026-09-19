@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { Venue } from "@/data/mockVenues";
-import { MapPin, Navigation, Clock, Coins, ChevronRight, Layers } from "lucide-react";
-import { useTheme } from "@/context/ThemeContext";
+import { Navigation } from "lucide-react";
 
 interface RealAlmatyMapProps {
   venues: Venue[];
@@ -16,16 +15,9 @@ export default function RealAlmatyMap({
   selectedVenue,
   onSelectVenue,
 }: RealAlmatyMapProps) {
-  const { theme } = useTheme();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<{ [key: string]: any }>({});
-  const [mapStyle, setMapStyle] = useState<"dark" | "voyager">(theme === "dark" ? "dark" : "voyager");
-
-  // Keep map style in sync if theme changes
-  useEffect(() => {
-    setMapStyle(theme === "dark" ? "dark" : "voyager");
-  }, [theme]);
 
   useEffect(() => {
     let isMounted = true;
@@ -57,11 +49,7 @@ export default function RealAlmatyMap({
         })
         .addTo(map);
 
-      // Choose CartoDB Tiles (Dark Matter or Voyager)
-      const tileUrl =
-        mapStyle === "dark"
-          ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+      const tileUrl = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
       L.tileLayer(tileUrl, {
         maxZoom: 19,
@@ -93,15 +81,15 @@ export default function RealAlmatyMap({
             <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
               <!-- Label tag -->
               <div style="
-                background: rgba(15, 19, 30, 0.92);
-                color: #ffffff;
+                background: rgba(255, 255, 255, 0.96);
+                color: #173f35;
                 font-family: system-ui, sans-serif;
                 font-size: 11px;
                 font-weight: 800;
                 padding: 3px 8px;
                 border-radius: 8px;
-                border: 1px solid rgba(255, 87, 34, 0.5);
-                box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+                border: 1px solid rgba(0, 160, 130, 0.25);
+                box-shadow: 0 4px 14px rgba(0,0,0,0.16);
                 white-space: nowrap;
                 margin-bottom: 5px;
                 pointer-events: none;
@@ -115,11 +103,11 @@ export default function RealAlmatyMap({
                 width: 38px;
                 height: 38px;
                 border-radius: 14px;
-                background: linear-gradient(135deg, #FF5722 0%, #F59E0B 100%);
+                background: linear-gradient(135deg, #00a082 0%, #008c72 100%);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 0 20px rgba(255, 87, 34, 0.6);
+                box-shadow: 0 8px 20px rgba(0, 160, 130, 0.28);
                 border: 2px solid #ffffff;
                 transition: transform 0.2s;
               ">
@@ -137,16 +125,16 @@ export default function RealAlmatyMap({
         // Custom Popup on click
         const popupContent = `
           <div style="
-            background: #0f131e;
-            color: #ffffff;
+            background: #ffffff;
+            color: #202124;
             font-family: system-ui, sans-serif;
             border-radius: 16px;
             padding: 12px;
             width: 250px;
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 16px 32px rgba(0,0,0,0.6);
+            border: 1px solid #e8e8e8;
+            box-shadow: 0 16px 32px rgba(0,0,0,0.18);
           ">
-            <div style="font-size: 14px; font-weight: 800; margin-bottom: 4px; color: #fff;">
+            <div style="font-size: 14px; font-weight: 800; margin-bottom: 4px; color: #202124;">
               ${venue.name}
             </div>
             <div style="font-size: 11px; color: #9ca3af; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
@@ -154,17 +142,17 @@ export default function RealAlmatyMap({
               <span>${venue.address}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 10px;">
-              <span style="color: #f97316; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+              <span style="color: #007e68; font-weight: 600; display: flex; align-items: center; gap: 4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 ${venue.prepTime}
               </span>
-              <span style="color: #f59e0b; font-weight: 700;">${venue.bonuses}</span>
+              <span style="color: #ff2d55; font-weight: 700;">${venue.bonuses}</span>
             </div>
             <button
               id="popup-btn-${venue.id}"
               style="
                 width: 100%;
-                background: linear-gradient(to right, #ea580c, #d97706);
+                background: #00a082;
                 color: #ffffff;
                 font-size: 12px;
                 font-weight: 700;
@@ -207,7 +195,7 @@ export default function RealAlmatyMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [venues, mapStyle]);
+  }, [venues, onSelectVenue]);
 
   // Handle selectedVenue flyTo
   useEffect(() => {
@@ -245,15 +233,6 @@ export default function RealAlmatyMap({
           <span className="text-slate-500 dark:text-gray-400">• {venues.length} заведений</span>
         </div>
 
-        {/* Style toggle */}
-        <button
-          onClick={() => setMapStyle(mapStyle === "dark" ? "voyager" : "dark")}
-          className="glass-panel px-3 py-2 rounded-2xl border border-slate-200 dark:border-white/15 backdrop-blur-xl shadow-lg text-xs font-semibold text-slate-700 dark:text-gray-200 hover:text-slate-950 dark:hover:text-white bg-white/90 dark:bg-[#0f131e]/85 flex items-center gap-1.5 transition-colors"
-          title="Сменить тему карты"
-        >
-          <Layers className="w-3.5 h-3.5 text-orange-500 dark:text-orange-400" />
-          <span>{mapStyle === "dark" ? "Тёмная" : "Светлая"}</span>
-        </button>
       </div>
 
       {/* Reset Location Button */}

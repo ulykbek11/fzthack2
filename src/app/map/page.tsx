@@ -1,372 +1,197 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
-  ArrowLeft,
-  Search,
-  MapPin,
   ChevronDown,
-  Zap,
-  Clock,
-  Coins,
+  Clock3,
+  Heart,
+  Home,
+  ListFilter,
   Map,
-  LayoutGrid,
-  ChevronUp,
-  Utensils,
-  Sandwich,
-  Flame,
-  Coffee,
-  Pizza,
-  Soup,
+  MapPin,
+  Search,
+  ShoppingBag,
+  SlidersHorizontal,
+  Sparkles,
+  Store,
+  UserRound,
+  X,
 } from "lucide-react";
-import { mockVenuesData, catalogCategories, Venue } from "@/data/mockVenues";
+import { catalogCategories, mockVenuesData, Venue } from "@/data/mockVenues";
 import VenueCard from "@/components/catalog/VenueCard";
 import MenuModal from "@/components/catalog/MenuModal";
-import ThemeToggle from "@/components/ThemeToggle";
-import dynamic from "next/dynamic";
 
-const renderCategoryIcon = (iconKey: string) => {
-  switch (iconKey) {
-    case "doner":
-      return <Sandwich className="w-4 h-4 text-orange-500" />;
-    case "burgers":
-      return <Flame className="w-4 h-4 text-amber-500" />;
-    case "coffee":
-      return <Coffee className="w-4 h-4 text-amber-600 dark:text-amber-300" />;
-    case "pizza":
-      return <Pizza className="w-4 h-4 text-rose-500" />;
-    case "asian":
-      return <Soup className="w-4 h-4 text-red-500" />;
-    default:
-      return <Utensils className="w-4 h-4 text-orange-500" />;
-  }
-};
+const RealAlmatyMap = dynamic(() => import("@/components/catalog/RealAlmatyMap"), {
+  ssr: false,
+  loading: () => <div className="h-[68vh] animate-pulse rounded-3xl bg-[#f2f2f2]" />,
+});
 
-const RealAlmatyMap = dynamic(
-  () => import("@/components/catalog/RealAlmatyMap"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-[650px] rounded-3xl bg-slate-100 dark:bg-[#080A10] border border-slate-200 dark:border-white/10 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-semibold text-slate-600 dark:text-gray-300">Загрузка настоящей карты Алматы...</span>
-        </div>
-      </div>
-    ),
-  }
-);
+type SortMode = "popular" | "rating" | "fast";
 
 export default function CatalogPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
+  const [bonusesOnly, setBonusesOnly] = useState(false);
+  const [fastOnly, setFastOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("popular");
+  const [mapOpen, setMapOpen] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [userAddress, setUserAddress] = useState("Алматы, пр. Абая 44");
 
-  useEffect(() => {
-    const checkScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-    window.addEventListener("scroll", checkScroll);
-    return () => window.removeEventListener("scroll", checkScroll);
-  }, []);
+  const venues = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const result = mockVenuesData.filter((venue) => {
+      const matchesQuery = !normalizedQuery ||
+        venue.name.toLowerCase().includes(normalizedQuery) ||
+        venue.address.toLowerCase().includes(normalizedQuery) ||
+        venue.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery));
+      const matchesCategory = category === "all" || venue.categorySlug === category;
+      const matchesBonus = !bonusesOnly || Boolean(venue.bonusWindow);
+      const matchesFast = !fastOnly || Number.parseInt(venue.prepTime, 10) <= 15;
+      return matchesQuery && matchesCategory && matchesBonus && matchesFast;
+    });
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Filter venues
-  const filteredVenues = mockVenuesData.filter((venue) => {
-    const matchesCategory =
-      selectedCategory === "all" || venue.categorySlug === selectedCategory;
-
-    const matchesSearch =
-      venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      venue.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      venue.address.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesFilter =
-      !activeFilter ||
-      (activeFilter === "fast" && (venue.prepTime.includes("10") || venue.prepTime.includes("5-12"))) ||
-      (activeFilter === "takeaway" && true) ||
-      (activeFilter === "bonuses" && venue.bonusAmount >= 200);
-
-    return matchesCategory && matchesSearch && matchesFilter;
-  });
+    return [...result].sort((a, b) => {
+      if (sortMode === "rating") return b.ratingScore - a.ratingScore;
+      if (sortMode === "fast") return Number.parseInt(a.prepTime, 10) - Number.parseInt(b.prepTime, 10);
+      return Number.parseFloat(b.reviewsCount) - Number.parseFloat(a.reviewsCount);
+    });
+  }, [query, category, bonusesOnly, fastOnly, sortMode]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#090B11] text-slate-900 dark:text-gray-100 flex flex-col selection:bg-orange-500 selection:text-white transition-colors duration-300">
-      
-      {/* Desktop Top Header */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A0D15]/95 backdrop-blur-md border-b border-slate-200 dark:border-white/10 shadow-sm dark:shadow-lg transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          
-          {/* Left: Back button, QoS Logo, Address picker */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Link
-              href="/"
-              className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0"
-              title="На главную"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
+    <div className="min-h-screen bg-white pb-20 text-[#202124] md:pb-0">
+      <header className="sticky top-0 z-40 border-b border-[#ededed] bg-white/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="QoS — главная">
+            <span className="grid h-10 w-10 place-items-center rounded-[13px] bg-[#ffc244] text-xl font-black text-[#173f35]">Q</span>
+            <span className="hidden text-2xl font-black tracking-[-0.05em] text-[#173f35] sm:inline">QoS</span>
+          </Link>
 
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-600 via-orange-500 to-amber-400 flex items-center justify-center text-white font-black text-lg shadow-md shadow-orange-500/30">
-                Q
-              </div>
-              <span className="text-xl font-black text-slate-900 dark:text-white hidden sm:inline tracking-tight">
-                QoS
-              </span>
-            </Link>
+          <button className="hidden min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-[#f6f6f6] lg:flex">
+            <MapPin className="h-5 w-5 shrink-0 text-[#00a082]" />
+            <span className="min-w-0">
+              <span className="block text-[11px] text-[#777]">Ваш адрес</span>
+              <span className="block max-w-44 truncate text-sm font-bold">Алматы, проспект Абая</span>
+            </span>
+            <ChevronDown className="h-4 w-4 shrink-0" />
+          </button>
 
-            {/* Address Selector */}
-            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-gray-300 hover:border-orange-500/40 cursor-pointer transition-colors">
-              <MapPin className="w-3.5 h-3.5 text-orange-500" />
-              <span className="font-semibold text-slate-900 dark:text-white">{userAddress}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-gray-400" />
-            </div>
-          </div>
-
-          {/* Center: Search Bar */}
-          <div className="flex-1 max-w-xl relative">
-            <div className="relative flex items-center">
-              <Search className="absolute left-4 w-4 h-4 text-slate-400 dark:text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск заведений или блюд (шаверма, донер, бургер, кофе...)"
-                className="w-full bg-slate-100 dark:bg-[#141824] hover:bg-slate-200/60 dark:hover:bg-[#181D2D] focus:bg-white dark:focus:bg-[#181D2D] border border-slate-200 dark:border-white/10 focus:border-orange-500 rounded-2xl pl-11 pr-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none transition-all shadow-inner"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 text-xs text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white px-2 py-0.5 rounded-md bg-slate-200 dark:bg-white/10"
-                >
-                  Очистить
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Right: View Switcher (Grid / Map), ThemeToggle & B2B Link */}
-          <div className="flex items-center gap-2.5 shrink-0 justify-end">
-            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-semibold">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                  viewMode === "grid"
-                    ? "bg-orange-600 text-white shadow-sm"
-                    : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Каталог</span>
-              </button>
-
-              <button
-                onClick={() => setViewMode("map")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                  viewMode === "map"
-                    ? "bg-orange-600 text-white shadow-sm"
-                    : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                <Map className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">На карте</span>
-              </button>
-            </div>
-
-            {/* Theme Toggle Button */}
-            <ThemeToggle />
-
-            <Link
-              href="/business"
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-200 hover:text-slate-900 dark:hover:text-white transition-colors hidden sm:inline-block"
-            >
-              Бизнесу
-            </Link>
-          </div>
-
-        </div>
-
-        {/* Filter Chips Strip */}
-        <div className="border-t border-slate-200 dark:border-white/5 py-2.5 bg-slate-50/80 dark:bg-[#0C0F17]/80">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2.5 overflow-x-auto scrollbar-none text-xs font-semibold">
-            {/* Filter: Самовывоз */}
-            <button
-              onClick={() =>
-                setActiveFilter(activeFilter === "takeaway" ? null : "takeaway")
-              }
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all whitespace-nowrap ${
-                activeFilter === "takeaway"
-                  ? "bg-orange-600 border-orange-500 text-white shadow-md shadow-orange-600/30"
-                  : "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white shadow-sm dark:shadow-none"
-              }`}
-            >
-              <Zap className="w-3 h-3 text-amber-500" />
-              <span>Самовывоз</span>
-            </button>
-
-            {/* Filter: До 15 мин */}
-            <button
-              onClick={() =>
-                setActiveFilter(activeFilter === "fast" ? null : "fast")
-              }
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all whitespace-nowrap ${
-                activeFilter === "fast"
-                  ? "bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-600/30"
-                  : "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white shadow-sm dark:shadow-none"
-              }`}
-            >
-              <Clock className="w-3 h-3 text-emerald-500" />
-              <span>До 15 мин</span>
-            </button>
-
-            {/* Filter: С бонусами */}
-            <button
-              onClick={() =>
-                setActiveFilter(activeFilter === "bonuses" ? null : "bonuses")
-              }
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all whitespace-nowrap ${
-                activeFilter === "bonuses"
-                  ? "bg-amber-600 border-amber-500 text-white shadow-md shadow-amber-600/30"
-                  : "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white shadow-sm dark:shadow-none"
-              }`}
-            >
-              <Coins className="w-3 h-3 text-amber-500" />
-              <span>С бонусами QoS</span>
-            </button>
-
-            {activeFilter && (
-              <button
-                onClick={() => setActiveFilter(null)}
-                className="text-xs text-orange-600 dark:text-orange-400 hover:underline ml-2 whitespace-nowrap"
-              >
-                Сбросить
+          <div className="relative mx-auto w-full max-w-2xl">
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#626262]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Найти заведение или блюдо"
+              className="h-12 w-full rounded-2xl border border-transparent bg-[#f4f4f4] pl-12 pr-11 text-[15px] outline-none transition placeholder:text-[#858585] focus:border-[#00a082] focus:bg-white focus:ring-4 focus:ring-[#00a082]/10"
+            />
+            {query && (
+              <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 hover:bg-[#e8e8e8]" aria-label="Очистить поиск">
+                <X className="h-4 w-4" />
               </button>
             )}
+          </div>
+
+          <button className="hidden h-11 items-center gap-2 rounded-xl bg-[#e9f8f5] px-4 text-sm font-extrabold text-[#007e68] sm:flex">
+            <UserRound className="h-4 w-4" /> Войти
+          </button>
+        </div>
+
+        <div className="border-t border-[#f3f3f3]">
+          <div className="scrollbar-none mx-auto flex max-w-[1500px] items-center gap-2 overflow-x-auto px-4 py-2.5 sm:px-6 lg:px-8">
+            <button
+              onClick={() => setBonusesOnly((value) => !value)}
+              className={`filter-chip ${bonusesOnly ? "filter-chip-active" : ""}`}
+            >
+              <Sparkles className="h-4 w-4" /> Бонусные часы
+            </button>
+            <button onClick={() => setFastOnly((value) => !value)} className={`filter-chip ${fastOnly ? "filter-chip-active" : ""}`}>
+              <Clock3 className="h-4 w-4" /> До 15 минут
+            </button>
+            <div className="relative">
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+                className="filter-chip appearance-none pr-9 outline-none"
+                aria-label="Тип кухни"
+              >
+                {catalogCategories.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+            </div>
+            <div className="relative">
+              <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)} className="filter-chip appearance-none pr-9 outline-none" aria-label="Сортировка">
+                <option value="popular">Сначала популярные</option>
+                <option value="rating">По рейтингу</option>
+                <option value="fast">Быстрее готовятся</option>
+              </select>
+              <SlidersHorizontal className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+            </div>
+            <button onClick={() => setMapOpen((value) => !value)} className={`filter-chip ml-auto ${mapOpen ? "filter-chip-active" : ""}`}>
+              <Map className="h-4 w-4" /> {mapOpen ? "Список" : "Карта"}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
-        
-        {/* Category Selector Bar */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-            {catalogCategories.map((cat) => (
-              <button
-                key={cat.slug}
-                onClick={() => setSelectedCategory(cat.slug)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all duration-200 border ${
-                  selectedCategory === cat.slug
-                    ? "bg-gradient-to-r from-orange-600 to-amber-500 text-white border-transparent shadow-lg shadow-orange-600/25 scale-[1.02]"
-                    : "bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-gray-300 border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white shadow-sm dark:shadow-none"
-                }`}
-              >
-                <span className="flex items-center">{renderCategoryIcon(cat.iconKey)}</span>
-                <span>{cat.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* View Mode */}
-        {viewMode === "grid" ? (
+      <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
+        <section className="mb-8 overflow-hidden rounded-[26px] bg-[#eaf8f5] px-5 py-5 sm:flex sm:items-center sm:justify-between sm:px-8 sm:py-6">
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#008d74]">Умный предзаказ</p>
+            <h1 className="mt-1 text-2xl font-black tracking-[-0.035em] text-[#173f35] sm:text-3xl">Закажите к нужному времени</h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#4b665f]">В спокойные часы заведения начисляют бонусы за предзаказ — такие предложения отмечены розовым бейджем.</p>
+          </div>
+          <div className="mt-4 flex items-center gap-2 rounded-2xl bg-white/75 px-4 py-3 text-sm font-bold text-[#173f35] sm:mt-0">
+            <Store className="h-5 w-5 text-[#00a082]" /> 50 заведений Алматы
+          </div>
+        </section>
+
+        {mapOpen ? (
+          <RealAlmatyMap venues={venues} selectedVenue={selectedVenue} onSelectVenue={setSelectedVenue} />
+        ) : (
+          <>
+            <div className="mb-5 flex items-end justify-between gap-4">
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                  {selectedCategory === "all"
-                    ? "Все заведения с предзаказом"
-                    : catalogCategories.find((c) => c.slug === selectedCategory)?.name}
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">
-                  Найдено: <strong className="text-slate-900 dark:text-white">{filteredVenues.length}</strong> заведений • Заказ без очереди
-                </p>
+                <h2 className="text-2xl font-black tracking-[-0.035em] sm:text-[30px]">Рядом с вами</h2>
+                <p className="mt-1 text-sm text-[#737373]">{venues.length} заведений · данные организаций из 2ГИС</p>
               </div>
+              <ListFilter className="hidden h-5 w-5 text-[#666] sm:block" />
             </div>
 
-            {filteredVenues.length === 0 ? (
-              <div className="text-center py-20 rounded-3xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-8 shadow-sm">
-                <p className="text-base font-bold text-slate-900 dark:text-white mb-2">Ничего не найдено</p>
-                <p className="text-xs text-slate-500 dark:text-gray-400 max-w-sm mx-auto mb-4">
-                  Попробуйте изменить запрос или сбросить активные фильтры.
-                </p>
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("all");
-                    setActiveFilter(null);
-                  }}
-                  className="px-5 py-2.5 rounded-xl bg-orange-600 text-white text-xs font-bold shadow-md shadow-orange-600/30"
-                >
-                  Сбросить фильтры
-                </button>
+            {venues.length ? (
+              <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {venues.map((venue) => <VenueCard key={venue.id} venue={venue} onSelect={setSelectedVenue} />)}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                {filteredVenues.map((venue) => (
-                  <VenueCard
-                    key={venue.id}
-                    venue={venue}
-                    onSelect={(v) => setSelectedVenue(v)}
-                  />
-                ))}
+              <div className="rounded-3xl bg-[#f7f7f7] px-5 py-20 text-center">
+                <Search className="mx-auto h-8 w-8 text-[#999]" />
+                <h3 className="mt-4 text-xl font-black">Ничего не нашли</h3>
+                <p className="mt-1 text-sm text-[#777]">Попробуйте другой запрос или сбросьте фильтры.</p>
+                <button onClick={() => { setQuery(""); setCategory("all"); setBonusesOnly(false); setFastOnly(false); }} className="mt-5 rounded-xl bg-[#00a082] px-5 py-3 text-sm font-bold text-white">Сбросить фильтры</button>
               </div>
             )}
-          </div>
-        ) : (
-          /* Real Almaty Interactive Map */
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">
-                  Настоящая интерактивная карта Алматы
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-gray-400">
-                  Все партнерские заведения и бренды на реальных улицах Алматы. Нажмите на любой маркер для предзаказа.
-                </p>
-              </div>
-              <span className="text-xs text-orange-600 dark:text-orange-400 font-bold font-mono">
-                {filteredVenues.length} заведений в Алматы
-              </span>
-            </div>
-
-            <RealAlmatyMap
-              venues={filteredVenues}
-              selectedVenue={selectedVenue}
-              onSelectVenue={(v) => setSelectedVenue(v)}
-            />
-          </div>
+          </>
         )}
-
       </main>
 
-      {/* Floating Scroll To Top button */}
-      {showScrollTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-5 py-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-gray-900 font-bold text-xs shadow-2xl hover:scale-105 transition-all flex items-center gap-1.5 border border-slate-700 dark:border-gray-200 animate-in slide-in-from-bottom-3"
-        >
-          <ChevronUp className="w-4 h-4" />
-          <span>Вверх</span>
-        </button>
-      )}
+      <footer className="border-t border-[#eeeeee] bg-[#fafafa]">
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-3 px-4 py-8 text-sm text-[#777] sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <p>© 2026 QoS · Предзаказ без очередей</p>
+          <div className="flex items-center gap-5">
+            <span>Алматы</span>
+            <Link href="/business" className="transition hover:text-[#007e68]">QoS для заведений</Link>
+          </div>
+        </div>
+      </footer>
 
-      {/* Menu Modal */}
-      <MenuModal
-        venue={selectedVenue}
-        onClose={() => setSelectedVenue(null)}
-      />
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#e8e8e8] bg-white px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden">
+        <button className="mobile-nav-item text-[#007e68]"><Home className="h-5 w-5 fill-[#ffc244] text-[#173f35]" /><span>Главная</span></button>
+        <button onClick={() => document.querySelector("input")?.focus()} className="mobile-nav-item"><Search className="h-5 w-5" /><span>Поиск</span></button>
+        <button className="mobile-nav-item"><ShoppingBag className="h-5 w-5" /><span>Заказы</span></button>
+        <button className="mobile-nav-item"><Heart className="h-5 w-5" /><span>Избранное</span></button>
+      </nav>
 
+      <MenuModal venue={selectedVenue} onClose={() => setSelectedVenue(null)} />
     </div>
   );
 }

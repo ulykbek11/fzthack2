@@ -96,12 +96,13 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
     (sum, ci) => sum + ci.item.price * ci.quantity,
     0
   );
-  const earnedBonuses = Math.round(totalAmount * 0.08);
+  const eligibleForBonus = Boolean(venue.bonusWindow && pickupTime === venue.bonusWindow);
+  const earnedBonuses = eligibleForBonus ? venue.bonusAmount : 0;
 
   const handleCheckout = () => {
     const rawDigits = phoneNumber.replace(/\D/g, "");
-    if (rawDigits.length < 11) {
-      setPhoneError("Введите номер телефона, чтобы получить бонусы QoS на ваш счет");
+    if (eligibleForBonus && rawDigits.length < 11) {
+      setPhoneError("Введите номер телефона, чтобы получить бонусы за тихий час");
       return;
     }
     setPhoneError("");
@@ -112,7 +113,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 dark:bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-5xl bg-white dark:bg-[#0F131E] border border-slate-200 dark:border-white/15 rounded-3xl shadow-2xl overflow-hidden my-auto flex flex-col max-h-[90vh]">
+      <div className="relative my-auto flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         
         {/* Header Bar */}
         <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-zinc-900 shrink-0">
@@ -156,19 +157,19 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
             </div>
 
             <div className="text-right">
-              <span className="text-xs text-gray-300 block">Бонусы за предзаказ:</span>
+              <span className="text-xs text-gray-300 block">Бонусное время:</span>
               <span className="text-sm font-bold text-amber-400">
-                1 бонус = 1 ₸ на баланс
+                {venue.bonusWindow ? `${venue.bonusWindow} · +${venue.bonusAmount}` : "Сегодня нет бонусных слотов"}
               </span>
             </div>
           </div>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+        <div className="grid flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-12 lg:overflow-hidden">
           
           {/* Left: Dishes List */}
-          <div className="lg:col-span-7 p-5 sm:p-6 overflow-y-auto space-y-4 border-r border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-transparent">
+          <div className="space-y-4 border-r border-slate-200 bg-slate-50/60 p-5 sm:p-6 lg:col-span-7 lg:overflow-y-auto">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Меню заведения</h3>
             </div>
@@ -237,7 +238,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
           </div>
 
           {/* Right: Order Summary */}
-          <div className="lg:col-span-5 p-5 sm:p-6 bg-white dark:bg-[#0B0E17] flex flex-col justify-between overflow-y-auto">
+          <div className="flex flex-col justify-between bg-white p-5 sm:p-6 lg:col-span-5 lg:overflow-y-auto">
             {orderConfirmed ? (
               <div className="my-auto text-center py-8 space-y-4 animate-in zoom-in-95">
                 <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-500 dark:text-emerald-400 mx-auto">
@@ -264,7 +265,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                   </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-left max-w-xs mx-auto space-y-1.5">
+                {eligibleForBonus && <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-left max-w-xs mx-auto space-y-1.5">
                   <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-300">
                     <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
                     <span>Бонусы QoS начислены на баланс!</span>
@@ -279,7 +280,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                   <p className="text-[10px] text-slate-500 dark:text-gray-400 pt-0.5">
                     SMS с кодом заказа и информацией о бонусах отправлено.
                   </p>
-                </div>
+                </div>}
 
                 <button
                   onClick={() => {
@@ -350,7 +351,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                     Время самовывоза:
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {["Через 15 минут", "Через 30 минут", "Ко времени"].map((t) => (
+                    {["Через 15 минут", "Через 30 минут", ...(venue.bonusWindow ? [venue.bonusWindow] : [])].map((t) => (
                       <button
                         key={t}
                         onClick={() => setPickupTime(t)}
@@ -366,12 +367,12 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                   </div>
                 </div>
 
-                {/* Phone Number Input for Bonuses */}
-                <div className="pt-3 border-t border-slate-200 dark:border-white/10">
+                {/* Phone Number Input is needed only for a bonus slot. */}
+                {eligibleForBonus && <div className="pt-3 border-t border-slate-200 dark:border-white/10">
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold text-slate-800 dark:text-gray-200 flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5 text-orange-500" />
-                      <span>Номер телефона для бонусов</span>
+                      <span>Номер для зачисления бонусов</span>
                       <span className="text-red-500 text-xs">*</span>
                     </label>
                     {totalAmount > 0 && (
@@ -403,10 +404,10 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                   ) : (
                     <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-1 flex items-center gap-1">
                       <Coins className="w-3 h-3 text-amber-500 shrink-0" />
-                      <span>Бонусы автоматически зачислятся на этот номер при выдаче</span>
+                      <span>Бонусы начислятся после выдачи заказа в выбранный тихий час</span>
                     </p>
                   )}
-                </div>
+                </div>}
 
                 {/* Price Summary */}
                 <div className="pt-3 border-t border-slate-200 dark:border-white/10 space-y-2 text-xs">
@@ -416,7 +417,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                       {totalAmount.toLocaleString()} ₸
                     </span>
                   </div>
-                  {totalAmount > 0 && (
+                  {totalAmount > 0 && eligibleForBonus && (
                     <div className="flex justify-between text-amber-600 dark:text-amber-400 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
                       <span className="flex items-center gap-1 font-semibold">
                         <Coins className="w-3.5 h-3.5" /> Будет начислено:

@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #ffffff;
+  --foreground: #202124;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
 }
@@ -35,7 +35,58 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.filter-chip {
+  display: inline-flex;
+  min-height: 40px;
+  flex: none;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #f3f3f3;
+  padding: 0.55rem 1rem;
+  color: #202124;
+  font-size: 0.875rem;
+  font-weight: 750;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.filter-chip:hover {
+  background: #e9e9e9;
+}
+
+.filter-chip-active {
+  border-color: #00a082;
+  background: #e8f7f4;
+  color: #007e68;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  color: #777;
+  font-size: 0.65rem;
+  font-weight: 650;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
 }
 
 /* Custom scrollbar */
