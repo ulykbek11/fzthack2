@@ -14,12 +14,12 @@ import {
   Search,
   ShoppingBag,
   Sparkles,
-  UserRound,
   X,
 } from "lucide-react";
 import { catalogCategories, mockVenuesData, Venue } from "@/data/mockVenues";
 import VenueCard from "@/components/catalog/VenueCard";
 import MenuModal from "@/components/catalog/MenuModal";
+import MiniOrderTracker from "@/components/orders/MiniOrderTracker";
 import { BUSINESS_DATA_EVENT, getRegisteredVenues } from "@/lib/businessStore";
 
 const RealAlmatyMap = dynamic(() => import("@/components/catalog/RealAlmatyMap"), {
@@ -98,9 +98,9 @@ export default function CatalogPage() {
             )}
           </div>
 
-          <button className="hidden h-11 items-center gap-2 rounded-xl bg-[#e9f8f5] px-4 text-sm font-extrabold text-[#007e68] sm:flex">
-            <UserRound className="h-4 w-4" /> Войти
-          </button>
+          <Link href="/orders" className="hidden h-11 items-center gap-2 rounded-xl bg-[#e9f8f5] px-4 text-sm font-extrabold text-[#007e68] sm:flex">
+            <ShoppingBag className="h-4 w-4" /> Мои заказы
+          </Link>
         </div>
 
         <div className="border-t border-[#f3f3f3]">
@@ -174,11 +174,12 @@ export default function CatalogPage() {
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#e8e8e8] bg-white px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden">
         <button className="mobile-nav-item text-[#007e68]"><Home className="h-5 w-5 fill-[#ffc244] text-[#173f35]" /><span>Главная</span></button>
         <button onClick={() => document.querySelector("input")?.focus()} className="mobile-nav-item"><Search className="h-5 w-5" /><span>Поиск</span></button>
-        <button className="mobile-nav-item"><ShoppingBag className="h-5 w-5" /><span>Заказы</span></button>
+        <Link href="/orders" className="mobile-nav-item"><ShoppingBag className="h-5 w-5" /><span>Заказы</span></Link>
         <button className="mobile-nav-item"><Heart className="h-5 w-5" /><span>Избранное</span></button>
       </nav>
 
       <MenuModal venue={selectedVenue} onClose={() => setSelectedVenue(null)} />
+      <MiniOrderTracker />
     </div>
   );
 }

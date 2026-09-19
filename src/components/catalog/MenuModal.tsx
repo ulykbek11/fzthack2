@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   X,
   Plus,
@@ -334,20 +335,25 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                   </p>
                 </div>}
 
-                <button
-                  onClick={() => {
-                    setOrderConfirmed(false);
-                    setCart([]);
-                    setPhoneNumber("");
-                    setPhoneError("");
-                    setBusinessOrderId(null);
-                    setLiveStatus("NEW");
-                    onClose();
-                  }}
-                  className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white text-xs font-bold transition-all"
-                >
-                  Вернуться в каталог
-                </button>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                  <Link href="/orders" className="rounded-xl bg-[#00a082] px-6 py-3 text-xs font-bold text-white transition-all">
+                    Отслеживать заказ
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setOrderConfirmed(false);
+                      setCart([]);
+                      setPhoneNumber("");
+                      setPhoneError("");
+                      setBusinessOrderId(null);
+                      setLiveStatus("NEW");
+                      onClose();
+                    }}
+                    className="rounded-xl bg-slate-100 px-6 py-3 text-xs font-bold text-slate-800 transition-all hover:bg-slate-200"
+                  >
+                    Вернуться в каталог
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-5">

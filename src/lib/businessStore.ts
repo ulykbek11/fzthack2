@@ -28,6 +28,7 @@ export interface BusinessOrder {
   totalAmount: number;
   bonusAmount: number;
   isBonusOrder: boolean;
+  estimatedReadyAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,12 +131,30 @@ export function getBusinessOrder(orderId: string): BusinessOrder | null {
   return readArray<BusinessOrder>(ORDERS_KEY).find((order) => order.id === orderId) || null;
 }
 
-export function createBusinessOrder(input: Omit<BusinessOrder, "id" | "createdAt" | "updatedAt" | "status">) {
+function getEstimatedReadyAt(pickupTime: string) {
+  const target = new Date();
+  const minutesMatch = pickupTime.match(/(\d+)\s*мин/);
+  if (minutesMatch) {
+    target.setMinutes(target.getMinutes() + Number(minutesMatch[1]));
+    return target.toISOString();
+  }
+  const clockMatch = pickupTime.match(/(\d{1,2}):(\d{2})/);
+  if (clockMatch) {
+    target.setHours(Number(clockMatch[1]), Number(clockMatch[2]), 0, 0);
+    if (target.getTime() < Date.now()) target.setDate(target.getDate() + 1);
+    return target.toISOString();
+  }
+  target.setMinutes(target.getMinutes() + 30);
+  return target.toISOString();
+}
+
+export function createBusinessOrder(input: Omit<BusinessOrder, "id" | "estimatedReadyAt" | "createdAt" | "updatedAt" | "status">) {
   const timestamp = new Date().toISOString();
   const order: BusinessOrder = {
     ...input,
     id: `order-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     status: "NEW",
+    estimatedReadyAt: getEstimatedReadyAt(input.pickupTime),
     createdAt: timestamp,
     updatedAt: timestamp,
   };
