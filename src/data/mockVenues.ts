@@ -8,6 +8,7 @@ export interface MenuItem {
   category: string;
   popular?: boolean;
   available?: boolean;
+  complexityWeight?: number;
 }
 
 export interface Venue {
@@ -131,6 +132,7 @@ function buildMenu(venueId: string): MenuItem[] {
     image: dishImages[index],
     category: index === 2 ? "Пицца" : "Основное",
     popular: index < 2,
+    complexityWeight: [2, 3, 2, 2][index],
   }));
 }
 

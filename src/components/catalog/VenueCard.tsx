@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Clock3, Heart, Star, Sparkles } from "lucide-react";
+import { Clock3, Heart, Star } from "lucide-react";
 import { Venue } from "@/data/mockVenues";
 
 interface VenueCardProps {
@@ -25,13 +25,6 @@ export default function VenueCard({ venue, onSelect }: VenueCardProps) {
           loading="lazy"
         />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/40 to-transparent" />
-
-        {venue.bonusWindow && (
-          <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-lg bg-[#ff2d55] px-2.5 py-1.5 text-[11px] font-extrabold text-white shadow-sm sm:text-xs">
-            <Sparkles className="h-3.5 w-3.5" />
-            +{venue.bonusAmount} бонусов · {venue.bonusWindow}
-          </div>
-        )}
 
         <button
           type="button"

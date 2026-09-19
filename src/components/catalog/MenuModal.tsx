@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   X,
@@ -21,6 +21,7 @@ import {
   createBusinessOrder,
   getBusinessOrder,
 } from "@/lib/businessStore";
+import { calculateCartComplexity, getVenuePickupSlots } from "@/lib/capacityEngine";
 
 interface MenuModalProps {
   venue: Venue | null;
@@ -34,13 +35,42 @@ interface CartItem {
 
 export default function MenuModal({ venue, onClose }: MenuModalProps) {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [pickupTime, setPickupTime] = useState("Через 15 минут");
+  const [selectedSlotStart, setSelectedSlotStart] = useState("");
+  const [slotError, setSlotError] = useState("");
+  const [capacityRevision, setCapacityRevision] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [pickupCode, setPickupCode] = useState<number | null>(null);
   const [businessOrderId, setBusinessOrderId] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState<BusinessOrderStatus>("NEW");
+
+  const cartComplexity = calculateCartComplexity(cart);
+  const pickupSlots = useMemo(
+    () => venue ? getVenuePickupSlots(venue.id, cartComplexity) : [],
+    [venue, cartComplexity, capacityRevision]
+  );
+  const selectedSlot = pickupSlots.find((slot) => slot.start === selectedSlotStart);
+  const pickupTime = selectedSlot?.label || "Выберите время";
+  const earnedBonuses = selectedSlot?.bonusAmount || 0;
+  const eligibleForBonus = earnedBonuses > 0;
+
+  useEffect(() => {
+    const refreshCapacity = () => setCapacityRevision((value) => value + 1);
+    window.addEventListener(BUSINESS_ORDER_EVENT, refreshCapacity);
+    window.addEventListener("storage", refreshCapacity);
+    return () => {
+      window.removeEventListener(BUSINESS_ORDER_EVENT, refreshCapacity);
+      window.removeEventListener("storage", refreshCapacity);
+    };
+  }, []);
+
+  useEffect(() => {
+    const current = pickupSlots.find((slot) => slot.start === selectedSlotStart && slot.available);
+    if (!current) {
+      setSelectedSlotStart(pickupSlots.find((slot) => slot.available)?.start || "");
+    }
+  }, [pickupSlots, selectedSlotStart]);
 
   useEffect(() => {
     if (!businessOrderId) return;
@@ -120,15 +150,25 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
     (sum, ci) => sum + ci.item.price * ci.quantity,
     0
   );
-  const eligibleForBonus = Boolean(venue.bonusWindow && pickupTime === venue.bonusWindow);
-  const earnedBonuses = eligibleForBonus ? venue.bonusAmount : 0;
-
   const handleCheckout = () => {
-    const rawDigits = phoneNumber.replace(/\D/g, "");
-    if (eligibleForBonus && rawDigits.length < 11) {
-      setPhoneError("Введите номер телефона, чтобы получить бонусы за тихий час");
+    if (!selectedSlot) {
+      setSlotError("Выберите доступное время получения заказа");
       return;
     }
+    const latestSlot = getVenuePickupSlots(venue.id, cartComplexity)
+      .find((slot) => slot.start === selectedSlot.start);
+    if (!latestSlot?.available) {
+      setSlotError("Этот интервал только что заполнился. Выберите другое время.");
+      return;
+    }
+    const checkoutBonus = latestSlot.bonusAmount;
+    const checkoutEligibleForBonus = checkoutBonus > 0;
+    const rawDigits = phoneNumber.replace(/\D/g, "");
+    if (checkoutEligibleForBonus && rawDigits.length < 11) {
+      setPhoneError("Введите номер телефона, чтобы получить бонусы за свободный интервал");
+      return;
+    }
+    setSlotError("");
     setPhoneError("");
     const code = Math.floor(100 + Math.random() * 900);
     setPickupCode(code);
@@ -145,8 +185,10 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
         quantity: cartItem.quantity,
       })),
       totalAmount,
-      bonusAmount: earnedBonuses,
-      isBonusOrder: eligibleForBonus,
+      bonusAmount: checkoutBonus,
+      isBonusOrder: checkoutEligibleForBonus,
+      slotStart: selectedSlot.start,
+      complexityPoints: cartComplexity,
     });
     setBusinessOrderId(order.id);
     setLiveStatus(order.status);
@@ -199,10 +241,8 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
             </div>
 
             <div className="text-right">
-              <span className="text-xs text-gray-300 block">Бонусное время:</span>
-              <span className="text-sm font-bold text-amber-400">
-                {venue.bonusWindow ? `${venue.bonusWindow} · +${venue.bonusAmount}` : "Сегодня нет бонусных слотов"}
-              </span>
+              <span className="text-xs text-gray-300 block">Умная загрузка кухни</span>
+              <span className="text-sm font-bold text-amber-400">Больше бонусов в свободное время</span>
             </div>
           </div>
         </div>
@@ -407,24 +447,42 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
 
                 {/* Pickup Time selector */}
                 <div className="pt-3 border-t border-slate-200 dark:border-white/10">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-2">
-                    Время самовывоза:
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {["Через 15 минут", "Через 30 минут", ...(venue.bonusWindow ? [venue.bonusWindow] : [])].map((t) => (
+                  <div className="mb-2 flex items-end justify-between gap-3">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-gray-300">
+                      Время самовывоза
+                    </label>
+                    <span className="text-[10px] text-slate-500">С учётом сложности заказа: {cartComplexity} балл.</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {pickupSlots.map((slot) => (
                       <button
-                        key={t}
-                        onClick={() => setPickupTime(t)}
-                        className={`py-2 px-2 text-center rounded-xl text-xs font-semibold border transition-all ${
-                          pickupTime === t
-                            ? "bg-orange-600 border-orange-500 text-white shadow-md shadow-orange-600/30"
-                            : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300 hover:text-slate-950 dark:hover:text-white"
+                        key={slot.id}
+                        type="button"
+                        disabled={!slot.available}
+                        onClick={() => {
+                          setSelectedSlotStart(slot.start);
+                          setSlotError("");
+                        }}
+                        className={`rounded-xl border px-2 py-2.5 text-left transition-all ${
+                          selectedSlotStart === slot.start
+                            ? "border-[#00a082] bg-[#e9f8f5] text-[#006b58] shadow-sm"
+                            : slot.available
+                              ? "border-slate-200 bg-slate-50 text-slate-700 hover:border-[#00a082]/50"
+                              : "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400 opacity-65"
                         }`}
                       >
-                        {t}
+                        <span className="block text-xs font-extrabold">{slot.label}</span>
+                        <span className={`mt-0.5 block text-[10px] font-bold ${slot.bonusAmount ? "text-amber-600" : "text-slate-500"}`}>
+                          {!slot.available ? "Нет мест" : slot.bonusAmount ? `+${slot.bonusAmount} бонусов` : "Без бонусов"}
+                        </span>
                       </button>
                     ))}
                   </div>
+                  <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
+                    <span>Бонус пересчитан с учётом текущей загрузки кухни</span>
+                    {selectedSlot && <span>{selectedSlot.occupancyPercent}% загрузки</span>}
+                  </div>
+                  {slotError && <p className="mt-2 text-[11px] font-medium text-red-500">{slotError}</p>}
                 </div>
 
                 {/* Phone Number Input is needed only for a bonus slot. */}
@@ -464,7 +522,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
                   ) : (
                     <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-1 flex items-center gap-1">
                       <Coins className="w-3 h-3 text-amber-500 shrink-0" />
-                      <span>Бонусы начислятся после выдачи заказа в выбранный тихий час</span>
+                      <span>Бонусы начислятся после выдачи заказа в выбранный свободный интервал</span>
                     </p>
                   )}
                 </div>}
@@ -497,7 +555,7 @@ export default function MenuModal({ venue, onClose }: MenuModalProps) {
 
                 {/* Checkout Button */}
                 <button
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || !selectedSlot?.available}
                   onClick={handleCheckout}
                   className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm shadow-xl shadow-orange-600/30 transition-all flex items-center justify-center gap-2"
                 >

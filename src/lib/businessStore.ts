@@ -29,6 +29,8 @@ export interface BusinessOrder {
   bonusAmount: number;
   isBonusOrder: boolean;
   estimatedReadyAt: string;
+  slotStart?: string;
+  complexityPoints?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -154,7 +156,7 @@ export function createBusinessOrder(input: Omit<BusinessOrder, "id" | "estimated
     ...input,
     id: `order-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     status: "NEW",
-    estimatedReadyAt: getEstimatedReadyAt(input.pickupTime),
+    estimatedReadyAt: input.slotStart || getEstimatedReadyAt(input.pickupTime),
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -200,6 +202,7 @@ export function createVenueMenuItem(data: Omit<MenuItem, "id">): MenuItem {
   return {
     ...data,
     available: data.available ?? true,
+    complexityWeight: data.complexityWeight ?? 2,
     id: `menu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   };
 }

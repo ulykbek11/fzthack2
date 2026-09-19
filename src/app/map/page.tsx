@@ -57,7 +57,9 @@ export default function CatalogPage() {
         venue.address.toLowerCase().includes(normalizedQuery) ||
         venue.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery));
       const matchesCategory = category === "all" || venue.categorySlug === category;
-      const matchesBonus = !bonusesOnly || Boolean(venue.bonusWindow);
+      // Автоматические бонусы действуют во всех заведениях; точная сумма
+      // рассчитывается после выбора блюд и времени.
+      const matchesBonus = !bonusesOnly || venue.menu.some((item) => item.available !== false);
       const matchesFast = !fastOnly || Number.parseInt(venue.prepTime, 10) <= 15;
       return matchesQuery && matchesCategory && matchesBonus && matchesFast;
     });

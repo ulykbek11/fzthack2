@@ -49,6 +49,7 @@ interface DraftDish {
   price: string;
   image: string;
   category: string;
+  complexityWeight: string;
 }
 
 const emptyDish = (): DraftDish => ({
@@ -58,6 +59,7 @@ const emptyDish = (): DraftDish => ({
   price: "",
   image: "",
   category: "Основное",
+  complexityWeight: "2",
 });
 
 export default function BusinessSetupPage() {
@@ -89,7 +91,7 @@ export default function BusinessSetupPage() {
   };
 
   const fillDemoMenu = () => {
-    setDishes(DEMO_DISHES.map((dish, index) => ({ ...dish, id: `demo-${Date.now()}-${index}`, price: String(dish.price) })));
+    setDishes(DEMO_DISHES.map((dish, index) => ({ ...dish, id: `demo-${Date.now()}-${index}`, price: String(dish.price), complexityWeight: String(index === 1 ? 3 : 2) })));
   };
 
   const handleCover = (event: ChangeEvent<HTMLInputElement>) => {
@@ -147,6 +149,7 @@ export default function BusinessSetupPage() {
       image: dish.image || form.cover,
       category: dish.category || "Основное",
       popular: false,
+      complexityWeight: Number(dish.complexityWeight),
     }));
     const venue: Venue = {
       id: venueId,
@@ -239,7 +242,7 @@ export default function BusinessSetupPage() {
             <section>
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#fff0f3] text-[#ff2d55]"><UtensilsCrossed className="h-5 w-5" /></div><div><h2 className="text-xl font-black">Меню</h2><p className="text-sm text-[#777]">Добавьте минимум одно блюдо.</p></div></div><button type="button" onClick={fillDemoMenu} className="rounded-xl bg-[#fff5d6] px-4 py-2.5 text-sm font-bold text-[#6c5200]">Заполнить тестовым меню</button></div>
               <div className="space-y-4">
-                {dishes.map((dish, index) => <div key={dish.id} className="rounded-2xl border border-[#e5e5e5] p-4"><div className="mb-4 flex items-center justify-between"><p className="font-black">Блюдо {index + 1}</p>{dishes.length > 1 && <button type="button" onClick={() => setDishes((current) => current.filter((item) => item.id !== dish.id))} className="rounded-full p-2 text-[#ff2d55] hover:bg-[#fff0f3]"><Trash2 className="h-4 w-4" /></button>}</div><div className="grid gap-3 md:grid-cols-2"><input value={dish.name} onChange={(e) => updateDish(dish.id, "name", e.target.value)} placeholder="Название блюда" className="business-input" /><input type="number" min="1" value={dish.price} onChange={(e) => updateDish(dish.id, "price", e.target.value)} placeholder="Цена, ₸" className="business-input" /><input value={dish.category} onChange={(e) => updateDish(dish.id, "category", e.target.value)} placeholder="Категория меню" className="business-input" /><input value={dish.image} onChange={(e) => updateDish(dish.id, "image", e.target.value)} placeholder="Ссылка на изображение (необязательно)" className="business-input" /><textarea value={dish.description} onChange={(e) => updateDish(dish.id, "description", e.target.value)} placeholder="Описание" className="business-input min-h-20 resize-none md:col-span-2" /></div></div>)}
+                {dishes.map((dish, index) => <div key={dish.id} className="rounded-2xl border border-[#e5e5e5] p-4"><div className="mb-4 flex items-center justify-between"><p className="font-black">Блюдо {index + 1}</p>{dishes.length > 1 && <button type="button" onClick={() => setDishes((current) => current.filter((item) => item.id !== dish.id))} className="rounded-full p-2 text-[#ff2d55] hover:bg-[#fff0f3]"><Trash2 className="h-4 w-4" /></button>}</div><div className="grid gap-3 md:grid-cols-2"><input value={dish.name} onChange={(e) => updateDish(dish.id, "name", e.target.value)} placeholder="Название блюда" className="business-input" /><input type="number" min="1" value={dish.price} onChange={(e) => updateDish(dish.id, "price", e.target.value)} placeholder="Цена, ₸" className="business-input" /><input value={dish.category} onChange={(e) => updateDish(dish.id, "category", e.target.value)} placeholder="Категория меню" className="business-input" /><select value={dish.complexityWeight} onChange={(e) => updateDish(dish.id, "complexityWeight", e.target.value)} className="business-input"><option value="1">Лёгкая · 1 балл нагрузки</option><option value="2">Обычная · 2 балла нагрузки</option><option value="3">Средняя · 3 балла нагрузки</option><option value="4">Сложная · 4 балла нагрузки</option><option value="5">Очень сложная · 5 баллов нагрузки</option></select><input value={dish.image} onChange={(e) => updateDish(dish.id, "image", e.target.value)} placeholder="Ссылка на изображение (необязательно)" className="business-input md:col-span-2" /><textarea value={dish.description} onChange={(e) => updateDish(dish.id, "description", e.target.value)} placeholder="Описание" className="business-input min-h-20 resize-none md:col-span-2" /></div></div>)}
               </div>
               <button type="button" onClick={() => setDishes((current) => [...current, emptyDish()])} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#00a082] px-4 py-3 text-sm font-bold text-[#007e68]"><Plus className="h-4 w-4" /> Добавить блюдо</button>
             </section>
