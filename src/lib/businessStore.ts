@@ -105,6 +105,21 @@ export function updateBusinessProfile(venueId: string, update: (profile: Busines
   return saveBusinessProfile(update(current));
 }
 
+export function deleteBusinessProfile(venueId: string) {
+  const nextProfiles = getBusinessProfiles().filter((profile) => profile.venue.id !== venueId);
+  const nextOrders = readArray<BusinessOrder>(ORDERS_KEY).filter((order) => order.venueId !== venueId);
+  writeArray(VENUES_KEY, nextProfiles);
+  writeArray(ORDERS_KEY, nextOrders);
+  if (canUseStorage()) {
+    const nextActiveVenue = nextProfiles.at(-1)?.venue.id;
+    if (nextActiveVenue) window.localStorage.setItem(ACTIVE_VENUE_KEY, nextActiveVenue);
+    else window.localStorage.removeItem(ACTIVE_VENUE_KEY);
+  }
+  notify(BUSINESS_DATA_EVENT);
+  notify(BUSINESS_ORDER_EVENT);
+  return nextProfiles.at(-1) || null;
+}
+
 export function getBusinessOrders(venueId?: string): BusinessOrder[] {
   const orders = readArray<BusinessOrder>(ORDERS_KEY);
   return (venueId ? orders.filter((order) => order.venueId === venueId) : orders)
